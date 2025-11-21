@@ -4,13 +4,15 @@ import { ReferenceText } from './components/ReferenceText';
 import { StatsBar } from './components/StatsBar';
 import { VibeLayer } from './components/VibeLayer';
 import { SummaryModal } from './components/SummaryModal';
+import { CuratorWidget } from './components/CuratorWidget';
 import { useKeystrokes } from './hooks/useKeystrokes';
 import { useMetrics } from './hooks/useMetrics';
 import clsx from 'clsx';
 
-const SAMPLE_TEXT = "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. Sphinx of black quartz, judge my vow.";
+const DEFAULT_TEXT = "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. Sphinx of black quartz, judge my vow.";
 
 function App() {
+  const [referenceText, setReferenceText] = useState(DEFAULT_TEXT);
   const [isFocused, setIsFocused] = useState(true);
   const [showSummary, setShowSummary] = useState(false);
   const [streak, setStreak] = useState(0);
@@ -28,7 +30,7 @@ function App() {
     handleInput,
     reset: resetKeystrokes
   } = useKeystrokes({
-    referenceText: SAMPLE_TEXT,
+    referenceText,
     onComplete: handleComplete
   });
 
@@ -53,6 +55,22 @@ function App() {
     setShowSummary(false);
     // Refocus input
     setIsFocused(true);
+  };
+
+  const handleNewContent = (text: string) => {
+    setReferenceText(text);
+    // We need to reset the keystrokes when the text changes
+    // The useKeystrokes hook doesn't automatically reset on prop change in this implementation
+    // but we can force a reset by calling resetKeystrokes immediately after state update
+    // However, since setState is async, we might need a useEffect or just rely on the fact that
+    // useKeystrokes uses referenceText in its dependency array for handleInput, but state like input/cursorIndex needs reset.
+    // Actually, let's just call resetKeystrokes() here.
+    // Ideally we would wrap this in a useEffect dependent on referenceText, but for now:
+    setTimeout(() => {
+      resetKeystrokes();
+      setIsFocused(true);
+      setShowSummary(false);
+    }, 0);
   };
 
   return (
@@ -84,7 +102,7 @@ function App() {
           onClick={() => setIsFocused(true)}
         >
           <ReferenceText
-            text={SAMPLE_TEXT}
+            text={referenceText}
             input={input}
             cursorIndex={cursorIndex}
           />
@@ -113,6 +131,8 @@ function App() {
         stats={metrics}
         keystrokes={keystrokes}
       />
+
+      <CuratorWidget onTextGenerated={handleNewContent} />
     </div>
   );
 }
